@@ -41,47 +41,69 @@ object NoOpMockLocationPusher : MockLocationPusher {
  */
 class AndroidMockLocationPusher(private val context: Context) : MockLocationPusher {
 
+    // Providers that have already been added/enabled/marked AVAILABLE. Re-issuing
+    // addTestProvider/setTestProviderEnabled/setTestProviderStatus on every single
+    // location push (once per refresh cycle) makes the system treat the provider as
+    // if it just came back online each time, which is what causes the status bar
+    // location icon to blink continuously instead of staying solid. Providers are
+    // only (re-)initialized once, and subsequent pushes just update the location.
+    private val readyProviders = mutableSetOf<String>()
+
+    private fun ensureProviderReady(locationManager: LocationManager, provider: String): Boolean {
+        if (readyProviders.contains(provider)) return true
+        try {
+            try {
+                locationManager.addTestProvider(
+                    provider, false, false, false, false, true, true, true,
+                    Criteria.POWER_LOW, Criteria.ACCURACY_FINE
+                )
+            } catch (e: IllegalArgumentException) {
+                // Provider might already exist or not be allowed
+            } catch (e: SecurityException) {
+                Log.e("MockLocationPusher", "SecurityException: Mock locations not enabled for $provider")
+                return false
+            }
+
+            try {
+                locationManager.setTestProviderEnabled(provider, true)
+            } catch (e: Exception) {
+                // Ignore
+            }
+
+            try {
+                // Mark the provider as AVAILABLE once so the system status bar location
+                // icon shows a stable/solid state instead of blinking as if it were
+                // still "searching" for a fix.
+                locationManager.setTestProviderStatus(
+                    provider,
+                    LocationProvider.AVAILABLE,
+                    null,
+                    System.currentTimeMillis()
+                )
+            } catch (e: Exception) {
+                // Ignore
+            }
+
+            readyProviders.add(provider)
+            return true
+        } catch (e: Exception) {
+            Log.e("MockLocationPusher", "Exception preparing provider $provider", e)
+            return false
+        }
+    }
+
     override fun pushLocation(point: LocationPoint) {
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
 
         for (provider in providers) {
             try {
-                try {
-                    locationManager.addTestProvider(
-                        provider, false, false, false, false, true, true, true,
-                        Criteria.POWER_LOW, Criteria.ACCURACY_FINE
-                    )
-                } catch (e: IllegalArgumentException) {
-                    // Provider might already exist or not be allowed
-                } catch (e: SecurityException) {
-                    Log.e("MockLocationPusher", "SecurityException: Mock locations not enabled for $provider")
-                    continue
-                }
-
-                try {
-                    locationManager.setTestProviderEnabled(provider, true)
-                } catch (e: Exception) {
-                    // Ignore
-                }
-
-                try {
-                    // Mark the provider as AVAILABLE so the system status bar location
-                    // icon shows a stable/solid state instead of blinking as if it were
-                    // still "searching" for a fix.
-                    locationManager.setTestProviderStatus(
-                        provider,
-                        LocationProvider.AVAILABLE,
-                        null,
-                        System.currentTimeMillis()
-                    )
-                } catch (e: Exception) {
-                    // Ignore
-                }
+                if (!ensureProviderReady(locationManager, provider)) continue
 
                 val loc = Location(provider)
                 loc.latitude = point.latitude
                 loc.longitude = point.longitude
+                loc.altitude = point.altitude
                 loc.accuracy = if (point.accuracy > 0f) point.accuracy else 3f
                 loc.speed = point.speed
                 loc.bearing = point.bearing
@@ -94,20 +116,12 @@ class AndroidMockLocationPusher(private val context: Context) : MockLocationPush
                 try {
                     locationManager.setTestProviderLocation(provider, loc)
                 } catch (e: IllegalArgumentException) {
-                    // Try one more time to add and set
+                    // Provider may have been removed externally; re-add and retry once.
+                    readyProviders.remove(provider)
                     try {
-                        locationManager.addTestProvider(
-                            provider, false, false, false, false, true, true, true,
-                            Criteria.POWER_LOW, Criteria.ACCURACY_FINE
-                        )
-                        locationManager.setTestProviderEnabled(provider, true)
-                        locationManager.setTestProviderStatus(
-                            provider,
-                            LocationProvider.AVAILABLE,
-                            null,
-                            System.currentTimeMillis()
-                        )
-                        locationManager.setTestProviderLocation(provider, loc)
+                        if (ensureProviderReady(locationManager, provider)) {
+                            locationManager.setTestProviderLocation(provider, loc)
+                        }
                     } catch (e2: Exception) {
                         Log.e("MockLocationPusher", "Exception pushing mock location to $provider after retry", e2)
                     }
@@ -125,6 +139,8 @@ class AndroidMockLocationPusher(private val context: Context) : MockLocationPush
             try { locationManager.removeTestProvider(LocationManager.NETWORK_PROVIDER) } catch (e: Exception) {}
         } catch (e: Exception) {
             Log.e("MockLocationPusher", "Failed to remove test providers", e)
+        } finally {
+            readyProviders.clear()
         }
     }
 }

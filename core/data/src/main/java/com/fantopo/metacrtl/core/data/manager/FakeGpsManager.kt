@@ -35,19 +35,34 @@ class FakeGpsManager(
 
     private var mockJob: Job? = null
 
+    // The location basis actually used to compute the pushed mock location.
+    // Decoupled from `pinnedLocation` (the marker shown on the map) so that
+    // moving the pin while mock GPS is active does not, by itself, move the
+    // simulated GPS position — only the floating overlay's refresh button
+    // (see refreshLocation()) advances the mock GPS to the latest pin.
+    private var activeBaseLocation: LocationPoint? = null
+
     fun setPinnedLocation(point: LocationPoint) {
         _state.update { current ->
-            current.copy(
-                pinnedLocation = point,
-                mockedLocation = point
-            )
+            if (current.isActive) {
+                // While mock GPS is running, only move the pinned marker. The actual
+                // mocked/pushed location must not jump until the user explicitly taps
+                // the floating overlay's refresh button (see refreshLocation()).
+                current.copy(pinnedLocation = point)
+            } else {
+                current.copy(
+                    pinnedLocation = point,
+                    mockedLocation = point
+                )
+            }
         }
-        if (_state.value.isActive) {
-            refreshLocation()
+        if (!_state.value.isActive) {
+            activeBaseLocation = point
         }
     }
 
     fun startMock(provider: ProviderServiceType? = null) {
+        activeBaseLocation = _state.value.pinnedLocation
         _state.update {
             it.copy(
                 isActive = true,
@@ -73,12 +88,15 @@ class FakeGpsManager(
     }
 
     /**
-     * Refreshes the mocked location for current pinned marker immediately.
+     * Advances the mock GPS to the currently pinned marker and refreshes the
+     * mocked location immediately. This is the only way the simulated GPS
+     * position moves to a newly-marked pin while mock GPS is active.
      */
     fun refreshLocation() {
+        activeBaseLocation = _state.value.pinnedLocation
         externalScope.launch(dispatcher) {
             val settings = settingsRepository.getSettings().first()
-            val base = _state.value.pinnedLocation
+            val base = activeBaseLocation
             val mocked = randomizer.randomize(base, settings)
             _state.update { current ->
                 current.copy(
@@ -98,7 +116,7 @@ class FakeGpsManager(
         mockJob = externalScope.launch(dispatcher) {
             while (isActive) {
                 val settings = settingsRepository.getSettings().first()
-                val base = _state.value.pinnedLocation
+                val base = activeBaseLocation
                 val mocked = randomizer.randomize(base, settings)
 
                 _state.update { current ->
