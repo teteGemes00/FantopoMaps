@@ -11,12 +11,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class DefaultSettingsRepository(
-    private val context: Context,
-    initialSettings: AppSettings = AppSettings()
+    initialSettings: AppSettings = AppSettings(),
+    private val prefs: SharedPreferences = InMemorySharedPreferences()
 ) : SettingsRepository {
 
-    
-    private val prefs: SharedPreferences = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
     private val _settings = MutableStateFlow(loadSettings(initialSettings))
     
     private fun loadSettings(default: AppSettings): AppSettings {
@@ -145,5 +143,20 @@ class DefaultSettingsRepository(
     override suspend fun setSelectedProvider(provider: ProviderServiceType?) {
         _settings.update { it.copy(selectedProvider = provider) }
         saveSettings(_settings.value)
+    }
+
+    companion object {
+        private const val PREFS_NAME = "app_settings"
+
+        /**
+         * Creates a [DefaultSettingsRepository] backed by real Android
+         * [SharedPreferences] derived from [context]. Use this factory in
+         * production code; the primary constructor's in-memory default is
+         * intended for unit tests that don't have a real [Context].
+         */
+        fun create(context: Context, initialSettings: AppSettings = AppSettings()): DefaultSettingsRepository {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return DefaultSettingsRepository(initialSettings, prefs)
+        }
     }
 }

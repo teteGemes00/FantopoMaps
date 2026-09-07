@@ -3,6 +3,7 @@ package com.fantopo.metacrtl.di
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.fantopo.metacrtl.core.data.manager.AndroidMockLocationPusher
 import com.fantopo.metacrtl.core.data.manager.FakeGpsManager
 import com.fantopo.metacrtl.core.data.manager.LocationRandomizer
 import com.fantopo.metacrtl.core.data.repository.DefaultLocationRepository
@@ -43,7 +44,7 @@ class AppContainer(private val context: Context) {
     }
 
     val settingsRepository: SettingsRepository by lazy {
-        DefaultSettingsRepository(context)
+        DefaultSettingsRepository.create(context)
     }
 
     val providerRepository: ProviderRepository by lazy {
@@ -56,8 +57,8 @@ class AppContainer(private val context: Context) {
 
     val fakeGpsManager: FakeGpsManager by lazy {
         FakeGpsManager(
-            context = context,
             settingsRepository = settingsRepository,
+            locationPusher = AndroidMockLocationPusher(context),
             randomizer = locationRandomizer
         )
     }
