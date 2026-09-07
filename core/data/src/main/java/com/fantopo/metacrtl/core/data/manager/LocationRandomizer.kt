@@ -73,7 +73,28 @@ class LocationRandomizer(
 
         if (settings.isRandomSpeed) {
             val min = settings.speedMin.coerceAtLeast(AppSettings.SPEED_ALLOWED_MIN)
-            val max = settings.speedMax.coerceAtMost(AppSettings.SPEED_ALLOWED_MAX)
+            var max = settings.speedMax.coerceAtMost(AppSettings.SPEED_ALLOWED_MAX)
+
+            // Guard against a reported speed that is physically inconsistent with the
+            // tiny position jitter applied above. A GPS consumer (map/ride-hailing app)
+            // commonly dead-reckons/extrapolates the marker between fixes using the
+            // reported speed+bearing; if speed implies far more travel per refresh tick
+            // than the actual random-radius jitter allows, the extrapolated marker keeps
+            // "walking" in a new random direction every tick and can end up far outside
+            // the configured radius even though every real fix stays within it. Cap the
+            // upper bound so implied travel (speed * refresh interval) never wildly
+            // exceeds the configured jitter radius, while never dropping below the
+            // user's own minimum.
+            if (settings.isRandomCoordinate && settings.refreshTimeMs > 0L) {
+                val radius = settings.randomRadiusMeters.coerceIn(
+                    AppSettings.RADIUS_ALLOWED_MIN,
+                    AppSettings.RADIUS_ALLOWED_MAX
+                )
+                val refreshSeconds = settings.refreshTimeMs / 1000.0
+                val maxRealisticSpeed = (radius / refreshSeconds).toFloat()
+                max = max.coerceAtMost(maxRealisticSpeed.coerceAtLeast(min))
+            }
+
             speed = if (max > min) {
                 min + random.nextFloat() * (max - min)
             } else {
