@@ -8,7 +8,8 @@ data class LocationPoint(
     val altitude: Double = 0.0,
     val bearing: Float = 0f,
     val speed: Float = 0f,
-    val accuracy: Float = 5f
+    val accuracy: Float = 5f,
+    val verticalAccuracy: Float = 5f
 ) {
     fun formatCoordinates(): String {
         return String.format(Locale.US, "%.6f, %.6f", latitude, longitude)
@@ -21,7 +22,8 @@ data class LocationPoint(
             altitude = 12.0,
             bearing = 0f,
             speed = 0f,
-            accuracy = 5f
+            accuracy = 5f,
+            verticalAccuracy = 5f
         )
     }
 }

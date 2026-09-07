@@ -74,7 +74,7 @@ class DataTest {
 
         repo.setFloatingMode(true)
         repo.setFusedMode(false)
-        repo.setRandomAccuracy(true, min = 2f, max = 4f)
+        repo.setRandomAccuracy(true, min = 2.0, max = 4.0)
         repo.setRandomAltitude(true, min = 10f, max = 50f)
         repo.setRandomSpeed(true, min = 10f, max = 30f)
         repo.setRandomBearing(true)
@@ -87,8 +87,8 @@ class DataTest {
         assertTrue(settings.isFloatingMode)
         assertFalse(settings.isFusedMode)
         assertTrue(settings.isRandomAccuracy)
-        assertEquals(2f, settings.accuracyMin, 0.001f)
-        assertEquals(4f, settings.accuracyMax, 0.001f)
+        assertEquals(2.0, settings.accuracyMin, 0.001)
+        assertEquals(4.0, settings.accuracyMax, 0.001)
         assertTrue(settings.isRandomAltitude)
         assertEquals(10f, settings.altitudeMin, 0.001f)
         assertEquals(50f, settings.altitudeMax, 0.001f)
@@ -110,8 +110,8 @@ class DataTest {
         val settings = AppSettings(
             isRandomCoordinate = true,
             isRandomAccuracy = true,
-            accuracyMin = 2f,
-            accuracyMax = 4f,
+            accuracyMin = 2.0,
+            accuracyMax = 4.0,
             isRandomAltitude = true,
             altitudeMin = 10f,
             altitudeMax = 30f,
@@ -124,11 +124,40 @@ class DataTest {
         for (i in 0 until 50) {
             val randomized = randomizer.randomize(base, settings)
             assertTrue("Accuracy ${randomized.accuracy} must be in range 2..4", randomized.accuracy in 2f..4f)
+            assertTrue("Vertical accuracy ${randomized.verticalAccuracy} must be in range 2..4", randomized.verticalAccuracy in 2f..4f)
             assertTrue("Altitude ${randomized.altitude} must be in range 10..30", randomized.altitude in 10.0..30.0)
             assertTrue("Bearing ${randomized.bearing} must be in range 0..360", randomized.bearing in 0f..360f)
             assertTrue("Speed ${randomized.speed} must be in range 5..20", randomized.speed in 5f..20f)
             assertTrue("Lat should be close to base", Math.abs(randomized.latitude - base.latitude) < 0.01)
             assertTrue("Lng should be close to base", Math.abs(randomized.longitude - base.longitude) < 0.01)
+        }
+    }
+
+    @Test
+    fun testLocationRandomizerRandomRadius() {
+        val randomizer = LocationRandomizer()
+        val base = LocationPoint(latitude = -6.2088, longitude = 106.8456)
+
+        // Radius of 0 must keep the point unchanged (no jitter applied).
+        val noJitterSettings = AppSettings(isRandomCoordinate = true, randomRadiusMeters = 0.0)
+        val noJitter = randomizer.randomize(base, noJitterSettings)
+        assertEquals(base.latitude, noJitter.latitude, 0.0000001)
+        assertEquals(base.longitude, noJitter.longitude, 0.0000001)
+
+        // A larger radius must keep the point within that radius (in degrees, roughly).
+        val radiusMeters = 20.0
+        val jitterSettings = AppSettings(isRandomCoordinate = true, randomRadiusMeters = radiusMeters)
+        val maxDegreeOffset = (radiusMeters / 111111.0) * 1.5 // small margin for longitude scaling
+        for (i in 0 until 50) {
+            val jittered = randomizer.randomize(base, jitterSettings)
+            assertTrue(
+                "Lat offset must be within radius",
+                Math.abs(jittered.latitude - base.latitude) <= maxDegreeOffset
+            )
+            assertTrue(
+                "Lng offset must be within radius",
+                Math.abs(jittered.longitude - base.longitude) <= maxDegreeOffset
+            )
         }
     }
 

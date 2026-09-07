@@ -24,9 +24,10 @@ class DefaultSettingsRepository(
             isFloatingMode = prefs.getBoolean("isFloatingMode", default.isFloatingMode),
             isFusedMode = prefs.getBoolean("isFusedMode", default.isFusedMode),
             isRandomCoordinate = prefs.getBoolean("isRandomCoordinate", default.isRandomCoordinate),
+            randomRadiusMeters = prefs.getFloat("randomRadiusMeters", default.randomRadiusMeters.toFloat()).toDouble(),
             isRandomAccuracy = prefs.getBoolean("isRandomAccuracy", default.isRandomAccuracy),
-            accuracyMin = prefs.getFloat("accuracyMin", default.accuracyMin),
-            accuracyMax = prefs.getFloat("accuracyMax", default.accuracyMax),
+            accuracyMin = prefs.getFloat("accuracyMin", default.accuracyMin.toFloat()).toDouble(),
+            accuracyMax = prefs.getFloat("accuracyMax", default.accuracyMax.toFloat()).toDouble(),
             isRandomAltitude = prefs.getBoolean("isRandomAltitude", default.isRandomAltitude),
             altitudeMin = prefs.getFloat("altitudeMin", default.altitudeMin),
             altitudeMax = prefs.getFloat("altitudeMax", default.altitudeMax),
@@ -43,9 +44,10 @@ class DefaultSettingsRepository(
             .putBoolean("isFloatingMode", s.isFloatingMode)
             .putBoolean("isFusedMode", s.isFusedMode)
             .putBoolean("isRandomCoordinate", s.isRandomCoordinate)
+            .putFloat("randomRadiusMeters", s.randomRadiusMeters.toFloat())
             .putBoolean("isRandomAccuracy", s.isRandomAccuracy)
-            .putFloat("accuracyMin", s.accuracyMin)
-            .putFloat("accuracyMax", s.accuracyMax)
+            .putFloat("accuracyMin", s.accuracyMin.toFloat())
+            .putFloat("accuracyMax", s.accuracyMax.toFloat())
             .putBoolean("isRandomAltitude", s.isRandomAltitude)
             .putFloat("altitudeMin", s.altitudeMin)
             .putFloat("altitudeMax", s.altitudeMax)
@@ -74,12 +76,17 @@ class DefaultSettingsRepository(
         saveSettings(_settings.value)
     }
 
-    override suspend fun setRandomCoordinate(enabled: Boolean) {
-        _settings.update { it.copy(isRandomCoordinate = enabled) }
+    override suspend fun setRandomCoordinate(enabled: Boolean, radiusMeters: Double?) {
+        _settings.update {
+            it.copy(
+                isRandomCoordinate = enabled,
+                randomRadiusMeters = radiusMeters ?: it.randomRadiusMeters
+            )
+        }
         saveSettings(_settings.value)
     }
 
-    override suspend fun setRandomAccuracy(enabled: Boolean, min: Float?, max: Float?) {
+    override suspend fun setRandomAccuracy(enabled: Boolean, min: Double?, max: Double?) {
         _settings.update {
             it.copy(
                 isRandomAccuracy = enabled,

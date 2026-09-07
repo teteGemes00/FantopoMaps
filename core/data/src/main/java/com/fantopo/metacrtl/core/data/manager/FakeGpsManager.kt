@@ -4,6 +4,8 @@ import android.content.Context
 import android.location.Criteria
 import android.location.Location
 import android.location.LocationManager
+import android.location.LocationProvider
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import com.fantopo.metacrtl.core.data.repository.SettingsRepository
@@ -66,6 +68,20 @@ class FakeGpsManager(
                     // Ignore
                 }
 
+                try {
+                    // Mark the provider as AVAILABLE so the system status bar location
+                    // icon shows a stable/solid state instead of blinking as if it were
+                    // still "searching" for a fix.
+                    locationManager.setTestProviderStatus(
+                        provider,
+                        LocationProvider.AVAILABLE,
+                        null,
+                        System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    // Ignore
+                }
+
                 val loc = Location(provider)
                 loc.latitude = point.latitude
                 loc.longitude = point.longitude
@@ -74,6 +90,9 @@ class FakeGpsManager(
                 loc.bearing = point.bearing
                 loc.time = System.currentTimeMillis()
                 loc.elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    loc.verticalAccuracyMeters = if (point.verticalAccuracy > 0f) point.verticalAccuracy else loc.accuracy
+                }
 
                 try {
                     locationManager.setTestProviderLocation(provider, loc)
@@ -85,6 +104,12 @@ class FakeGpsManager(
                             Criteria.POWER_LOW, Criteria.ACCURACY_FINE
                         )
                         locationManager.setTestProviderEnabled(provider, true)
+                        locationManager.setTestProviderStatus(
+                            provider,
+                            LocationProvider.AVAILABLE,
+                            null,
+                            System.currentTimeMillis()
+                        )
                         locationManager.setTestProviderLocation(provider, loc)
                     } catch (e2: Exception) {
                         Log.e("FakeGpsManager", "Exception pushing mock location to $provider after retry", e2)

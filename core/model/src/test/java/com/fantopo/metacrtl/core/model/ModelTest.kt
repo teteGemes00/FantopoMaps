@@ -35,8 +35,9 @@ class ModelTest {
     @Test
     fun testAppSettingsDefaults() {
         val settings = AppSettings()
-        assertEquals(5f, settings.accuracyMin, 0.001f)
-        assertEquals(5f, settings.accuracyMax, 0.001f)
+        assertEquals(5.0, settings.accuracyMin, 0.001)
+        assertEquals(5.0, settings.accuracyMax, 0.001)
+        assertEquals(3.0, settings.randomRadiusMeters, 0.001)
         assertEquals(0f, settings.altitudeMin, 0.001f)
         assertEquals(15f, settings.altitudeMax, 0.001f)
         assertEquals(1f, settings.speedMin, 0.001f)

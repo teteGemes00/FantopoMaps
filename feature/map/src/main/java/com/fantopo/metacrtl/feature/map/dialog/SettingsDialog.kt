@@ -64,9 +64,10 @@ fun SettingsDialog(
     var isFloating by remember { mutableStateOf(settings.isFloatingMode) }
     var isFused by remember { mutableStateOf(settings.isFusedMode) }
     var isRandomCoord by remember { mutableStateOf(settings.isRandomCoordinate) }
+    var randomRadius by remember { mutableStateOf(settings.randomRadiusMeters.toFloat()) }
 
     var isRandomAccuracy by remember { mutableStateOf(settings.isRandomAccuracy) }
-    var accuracyRange by remember { mutableStateOf(settings.accuracyMin..settings.accuracyMax) }
+    var accuracyRange by remember { mutableStateOf(settings.accuracyMin.toFloat()..settings.accuracyMax.toFloat()) }
 
     var isRandomAltitude by remember { mutableStateOf(settings.isRandomAltitude) }
     var altitudeRange by remember { mutableStateOf(settings.altitudeMin..settings.altitudeMax) }
@@ -88,9 +89,10 @@ fun SettingsDialog(
                 isFloatingMode = isFloating,
                 isFusedMode = isFused,
                 isRandomCoordinate = isRandomCoord,
+                randomRadiusMeters = randomRadius.toDouble(),
                 isRandomAccuracy = isRandomAccuracy,
-                accuracyMin = accuracyRange.start,
-                accuracyMax = accuracyRange.endInclusive,
+                accuracyMin = accuracyRange.start.toDouble(),
+                accuracyMax = accuracyRange.endInclusive.toDouble(),
                 isRandomAltitude = isRandomAltitude,
                 altitudeMin = altitudeRange.start,
                 altitudeMax = altitudeRange.endInclusive,
@@ -184,10 +186,10 @@ fun SettingsDialog(
 
                     Divider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                    // 3) Random Coordinate toggle
+                    // 3) Random Coordinate toggle & Radius Slider (0.0-20.0, applied before accuracy)
                     SettingToggleRow(
                         title = "Random Coordinate",
-                        description = "Realistic subtle lat/long random offset (1-5m)",
+                        description = "Randomizes lat/long within a radius around the pin",
                         icon = MapIcons.Explore,
                         checked = isRandomCoord,
                         onCheckedChange = {
@@ -195,13 +197,34 @@ fun SettingsDialog(
                             commitSettings()
                         }
                     )
+                    AnimatedVisibility(visible = isRandomCoord) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = "Radius: ${String.format(Locale.US, "%.1f", randomRadius)}m",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold)
+                            )
+                            Slider(
+                                value = randomRadius,
+                                onValueChange = { value ->
+                                    randomRadius = value
+                                    commitSettings()
+                                },
+                                valueRange = AppSettings.RADIUS_ALLOWED_MIN.toFloat()..AppSettings.RADIUS_ALLOWED_MAX.toFloat()
+                            )
+                        }
+                    }
 
                     Divider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                    // 4) Random Accuracy toggle & RangeSlider (0-5, default 5)
+                    // 4) Random Accuracy toggle & RangeSlider (0.0-20.0, sets both horizontal & vertical accuracy)
                     SettingToggleRow(
                         title = "Random Accuracy",
-                        description = "Range 0 to 5 meters (default min/max 5m)",
+                        description = "Range 0.0 to 20.0m, applies to horizontal & vertical accuracy",
                         icon = MapIcons.CompassCalibration,
                         checked = isRandomAccuracy,
                         onCheckedChange = {
@@ -217,7 +240,7 @@ fun SettingsDialog(
                                 .padding(12.dp)
                         ) {
                             Text(
-                                text = "Accuracy: ${String.format(Locale.US, "%.1f", accuracyRange.start)}m – ${String.format(Locale.US, "%.1f", accuracyRange.endInclusive)}m",
+                                text = "Accuracy (H & V): ${String.format(Locale.US, "%.1f", accuracyRange.start)}m – ${String.format(Locale.US, "%.1f", accuracyRange.endInclusive)}m",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold)
                             )
                             RangeSlider(
@@ -226,8 +249,7 @@ fun SettingsDialog(
                                     accuracyRange = range
                                     commitSettings()
                                 },
-                                valueRange = AppSettings.ACCURACY_ALLOWED_MIN..AppSettings.ACCURACY_ALLOWED_MAX,
-                                steps = 9
+                                valueRange = AppSettings.ACCURACY_ALLOWED_MIN.toFloat()..AppSettings.ACCURACY_ALLOWED_MAX.toFloat()
                             )
                         }
                     }
@@ -435,8 +457,9 @@ fun SettingsDialog(
                             isFloating = defaultSettings.isFloatingMode
                             isFused = defaultSettings.isFusedMode
                             isRandomCoord = defaultSettings.isRandomCoordinate
+                            randomRadius = defaultSettings.randomRadiusMeters.toFloat()
                             isRandomAccuracy = defaultSettings.isRandomAccuracy
-                            accuracyRange = defaultSettings.accuracyMin..defaultSettings.accuracyMax
+                            accuracyRange = defaultSettings.accuracyMin.toFloat()..defaultSettings.accuracyMax.toFloat()
                             isRandomAltitude = defaultSettings.isRandomAltitude
                             altitudeRange = defaultSettings.altitudeMin..defaultSettings.altitudeMax
                             isRandomBearing = defaultSettings.isRandomBearing

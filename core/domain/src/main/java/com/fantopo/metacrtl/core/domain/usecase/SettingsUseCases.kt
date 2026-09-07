@@ -22,11 +22,13 @@ class SetFusedModeUseCase(private val repository: SettingsRepository) {
 }
 
 class SetRandomCoordinateUseCase(private val repository: SettingsRepository) {
-    suspend operator fun invoke(enabled: Boolean) = repository.setRandomCoordinate(enabled)
+    suspend operator fun invoke(enabled: Boolean, radiusMeters: Double? = null) {
+        repository.setRandomCoordinate(enabled, radiusMeters)
+    }
 }
 
 class SetRandomAccuracyUseCase(private val repository: SettingsRepository) {
-    suspend operator fun invoke(enabled: Boolean, min: Float? = null, max: Float? = null) {
+    suspend operator fun invoke(enabled: Boolean, min: Double? = null, max: Double? = null) {
         repository.setRandomAccuracy(enabled, min, max)
     }
 }
