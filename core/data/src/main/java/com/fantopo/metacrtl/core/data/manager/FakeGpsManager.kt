@@ -1,6 +1,7 @@
 package com.fantopo.metacrtl.core.data.manager
 
 import android.content.Context
+import android.location.Criteria
 import android.location.Location
 import android.location.LocationManager
 import android.os.SystemClock
@@ -48,7 +49,10 @@ class FakeGpsManager(
         for (provider in providers) {
             try {
                 try {
-                    locationManager.addTestProvider(provider, false, false, false, false, true, true, true, 0, 5)
+                    locationManager.addTestProvider(
+                        provider, false, false, false, false, true, true, true,
+                        Criteria.POWER_LOW, Criteria.ACCURACY_FINE
+                    )
                 } catch (e: IllegalArgumentException) {
                     // Provider might already exist or not be allowed
                 } catch (e: SecurityException) {
@@ -76,7 +80,10 @@ class FakeGpsManager(
                 } catch (e: IllegalArgumentException) {
                     // Try one more time to add and set
                     try {
-                        locationManager.addTestProvider(provider, false, false, false, false, true, true, true, 0, 5)
+                        locationManager.addTestProvider(
+                            provider, false, false, false, false, true, true, true,
+                            Criteria.POWER_LOW, Criteria.ACCURACY_FINE
+                        )
                         locationManager.setTestProviderEnabled(provider, true)
                         locationManager.setTestProviderLocation(provider, loc)
                     } catch (e2: Exception) {
